@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java-version: [17, 21]
+
+
+    services:
+      altertable:
+        image: ghcr.io/altertable-ai/altertable-mock:latest
+        ports:
+          - 15001:15001
+        env:
+          ALTERTABLE_MOCK_API_KEYS: "valid_api_key"
+          ALTERTABLE_MOCK_ENVIRONMENTS: "production,integration_env"
+        options: >-
+          --health-cmd "exit 0"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 3
+          --health-start-period 10s
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up JDK ${{ matrix.java-version }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java-version }}
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v3
+
+      - name: Build and Test
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          arguments: |
+            build 
+            check 
+            --continue 
+            --scan
